@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>mewing</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 15px; background: #f9f9f9; }
+  h2 { margin-bottom: 10px; }
+  ul { list-style: none; padding: 0; margin: 0 0 15px 0; border: 1px solid #ddd; background: #fff; padding: 10px; border-radius: 8px; }
+  li { margin-bottom: 12px; }
+  label { font-weight: bold; display: block; margin-bottom: 5px; }
+  input, select, textarea { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
+  .checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+  }
+  .checkbox-group label {
+    display: flex;
+    align-items: center;
+    font-weight: normal;
+    cursor: pointer;
+  }
+  .checkbox-group input[type="checkbox"] {
+    margin-right: 6px;
+    cursor: pointer;
+  }
+  .eps-container input { margin-bottom: 5px; }
+  button { padding: 7px 14px; margin-right: 5px; border: none; border-radius: 4px; background: #007bff; color: #fff; cursor: pointer; }
+  button:hover { background: #0056b3; }
+  .copy-btn { background: #28a745; }
+  .copy-btn:hover { background: #1e7e34; }
+  .reset-btn { background: #dc3545; }
+  .reset-btn:hover { background: #a71d2a; }
+  pre { background: #222; color: #0f0; padding: 10px; border-radius: 5px; overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<h2>Tambah / Edit Data Video</h2>
+<ul>
+  <li><label>Judul</label><input type="text" id="title"></li>
+  <li><label>Rating</label><input type="number" id="rating" placeholder="Contoh: 3.7" step="0.1"></li>
+  <li><label>Jumlah Episode</label><input type="number" id="epsCount"></li>
+  <li><label>Status</label>
+    <select id="status">
+      <option value="Completed">Completed</option>
+      <option value="On">On</option>
+    </select>
+  </li>
+  <li><label>Season</label><input type="number" id="season" min="1" placeholder="Masukkan nomor season"></li>
+  <li><label>Tipe</label>
+    <select id="tipe">
+      <option value="Series">Series</option>
+      <option value="ONA">ONA</option>
+      <option value="OVA">OVA</option>
+      <option value="Movie">Movie</option>
+      <option value="Special">Special</option>
+    </select>
+  </li>
+  <li><label>Studio</label><input type="text" id="studio"></li>
+  <li><label>Sinopsis</label><textarea id="sinopsis" rows="3"></textarea></li>
+  <li><label>Aired Start</label><input type="date" id="airedStart"></li>
+  <li><label>Genre & Hashtag</label>
+    <div id="genreHashtagList" class="checkbox-group"></div>
+  </li>
+  <li><label>Thumbnail URL</label><input type="text" id="thumbnail"></li>
+  <li><label>Tanda Populer</label>
+    <select id="populer">
+      <option value="T">T (Populer)</option>
+      <option value="F">F (Tidak Populer)</option>
+    </select>
+  </li>
+  <li><label>Direktur</label><input type="text" id="direktur"></li>
+  <li><label>Link Episode</label>
+    <div class="eps-container" id="epsContainer"></div>
+    <button type="button" onclick="tambahEps()">+ Episode</button>
+    <button type="button" onclick="kurangiEps()">- Episode</button>
+  </li>
+</ul>
+
+<button onclick="tambahData()">Tampilkan Data</button>
+<button class="copy-btn" onclick="salinData()">Salin Data</button>
+<button class="reset-btn" onclick="resetForm()">Reset Data</button>
+
+<pre id="output">/* Hasil data muncul di sini */</pre>
+
+<script>
+const genres = ["Action", "Adventure", "Comedy", "Drama", "Fantasy", "Sci-Fi", "Horror", "Romance", "Mystery", "Supernatural", "Slice of Life", "Mecha", "Isekai", "Shounen", "Shoujo", "Seinen", "Josei", "Ecchi", "Harem", "Yuri/Yaoi"];
+
+function buatCheckbox(listId) {
+  const container = document.getElementById(listId);
+  container.innerHTML = '';
+  genres.forEach(genre => {
+    const label = document.createElement("label");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = genre;
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(genre));
+    container.appendChild(label);
+  });
+}
+
+function tambahEps() {
+  const container = document.getElementById("epsContainer");
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = `Link eps${container.children.length + 1}`;
+  container.appendChild(input);
+}
+
+function kurangiEps() {
+  const container = document.getElementById("epsContainer");
+  if (container.children.length > 1) container.removeChild(container.lastChild);
+}
+
+function tambahData() {
+  const fieldMap = {
+    "title": "title",
+    "rating": "mini-info-rtg",
+    "epsCount": "mini-info-eps",
+    "status": "status",
+    "tipe": "tipe",
+    "studio": "studio",
+    "sinopsis": "sinopsis",
+    "airedStart": "aired-start",
+    "thumbnail": "thumbnail",
+    "populer": "tanda-populer",
+    "direktur": "direktur"
+  };
+
+  let valid = true;
+  const missing = [];
+  const data = {};
+
+  Object.keys(fieldMap).forEach(id => {
+    const value = ambil(id);
+    if (!value) {
+      valid = false;
+      missing.push(id);
+    }
+    data[fieldMap[id]] = value;
+  });
+
+  const seasonNumber = ambil("season");
+  if (!seasonNumber) {
+    valid = false;
+    missing.push("season");
+  }
+  data["season"] = "Musim " + seasonNumber;
+
+  const selectedGenres = ambilArray("#genreHashtagList input");
+  data.genre = selectedGenres.join(", ");
+  data.hastag = selectedGenres;
+
+  if (!selectedGenres.length) {
+    valid = false;
+    missing.push("genre / hastag");
+  }
+
+  document.querySelectorAll("#epsContainer input").forEach((el, i) => {
+    if (!el.value) {
+      valid = false;
+      missing.push(`eps${i + 1}`);
+    }
+    data[`eps${i + 1}`] = el.value;
+  });
+
+  if (!valid) {
+    alert("Isi semua kolom yang diperlukan:\n" + missing.join(", "));
+    return;
+  }
+
+  document.getElementById("output").textContent = JSON.stringify(data, null, 2)
+    .replace(/"hastag": \[[^\]]*\]/, m => m.replace(/\n\s*/g, ' '));
+}
+
+function ambil(id) { return document.getElementById(id).value.trim(); }
+function ambilArray(selector) { return Array.from(document.querySelectorAll(selector + ":checked")).map(cb => cb.value); }
+
+function salinData() {
+  const teks = document.getElementById("output").textContent;
+  if (!teks.includes("{")) return alert("Belum ada data untuk disalin!");
+  navigator.clipboard.writeText(teks).then(() => alert("Disalin ke clipboard!"));
+}
+
+function resetForm() {
+  document.querySelectorAll("input, textarea, select").forEach(el => {
+    if (el.type === "checkbox" || el.type === "radio") el.checked = false;
+    else el.value = "";
+  });
+  document.getElementById("epsContainer").innerHTML = "";
+  tambahEps();
+  document.getElementById("output").textContent = "/* Hasil data muncul di sini */";
+}
+
+buatCheckbox("genreHashtagList");
+tambahEps();
+</script>
+
+</body>
+</html>
